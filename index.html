@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>풀마라톤 예상 기록</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="eyebrow">NIRC RUNNING TOOL</div>
+    <h1>풀마라톤 예상 기록</h1>
+    <div class="version">v1.3</div>
+    <p>1000m · 5km · 10km 기록 하나로 풀마라톤 기록을 계산합니다.</p>
+  </header>
+
+  <section class="card input-card">
+    <div class="label">1. 성별</div>
+    <div class="seg" id="sexSeg">
+      <button class="active" data-sex="male">남자</button>
+      <button data-sex="female">여자</button>
+    </div>
+
+    <div class="label gap">2. 기준 기록</div>
+    <div class="seg three" id="distSeg">
+      <button class="active" data-dist="1000">1000m</button>
+      <button data-dist="5000">5km</button>
+      <button data-dist="10000">10km</button>
+    </div>
+
+    <div class="label gap">3. 기록 입력</div>
+    <div class="time-row">
+      <label><input id="hh" inputmode="numeric" maxlength="1" value="0"><span>시간</span></label>
+      <label><input id="mm" inputmode="numeric" maxlength="2" placeholder="03"><span>분</span></label>
+      <label><input id="ss" inputmode="numeric" maxlength="2" placeholder="30"><span>초</span></label>
+    </div>
+    <div class="label gap">4. LT1 · LT2 심박 입력 <span class="optional">(선택)</span></div>
+    <div class="lt-row">
+      <label><span>LT1</span><input id="lt1" inputmode="numeric" placeholder="예: 145"><em>bpm</em></label>
+      <label><span>LT2</span><input id="lt2" inputmode="numeric" placeholder="예: 165"><em>bpm</em></label>
+    </div>
+    <div class="lt-help">직접 측정한 LT1·LT2가 있으면 입력하세요. 미입력 시 페이스표만 표시됩니다.</div>
+    <button id="calc" class="calc">계산하기</button>
+    <div id="error" class="error"></div>
+  </section>
+
+  <section id="results" class="results hidden">
+    <div class="bridge card">
+      <div class="small">입력 기록 → 10km 환산</div>
+      <strong id="tenEq">--:--</strong>
+      <span id="tenPace">페이스 --:--/km</span>
+    </div>
+
+    <div class="result-grid">
+      <article class="result-card">
+        <div class="badge">① VDOT</div>
+        <h2 id="vdotTime">--:--:--</h2>
+        <p id="vdotPace">--:--/km</p>
+        <small id="vdotNum">VDOT --</small>
+      </article>
+      <article class="result-card">
+        <div class="badge">② 나의 공식</div>
+        <h2 id="myTime">--:--:--</h2>
+        <p id="myPace">--:--/km</p>
+        <small id="routeText">10K → HALF → FULL</small>
+      </article>
+      <article class="result-card avg">
+        <div class="badge">③ 두 방식 평균</div>
+        <h2 id="avgTime">--:--:--</h2>
+        <p id="avgPace">--:--/km</p>
+        <small>VDOT + 나의 공식 단순 평균</small>
+      </article>
+    </div>
+
+    <div class="card caution">
+      <div class="caution-title">초보 · 장거리 훈련 부족자</div>
+      <div class="caution-main">예상 기록보다 <b>약 +5분</b> 여유 있게</div>
+      <div id="safeTarget" class="safe-target">--:--:-- · --:--/km</div>
+      <div class="caution-sub">풀코스 +5분 ≈ km당 약 +7초</div>
+    </div>
+
+    <details class="card pace-details">
+      <summary>
+        <span>풀코스 전체 페이스표</span>
+        <span class="open-hint">눌러서 전체 보기</span>
+      </summary>
+      <div class="pace-note">페이스: 2026 동아마라톤 가감 패턴 적용 · 심박: 입력한 LT1~LT2 사이에서 초반 억제 → 중반 유지 → 후반 점진 상승. LT2는 목표가 아니라 상한선에 가깝게 관리합니다.</div>
+      <div id="paceTable" class="pace-table"></div>
+    </details>
+
+    <details class="card formula">
+      <summary>나의 공식 계산 구조 보기</summary>
+      <div id="formulaText"></div>
+    </details>
+  </section>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>

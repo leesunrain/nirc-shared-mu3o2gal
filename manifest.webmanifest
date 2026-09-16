@@ -1,0 +1,9 @@
+{
+  "name": "풀마라톤 예상 기록",
+  "short_name": "풀 예상기록",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#111827"
+}
