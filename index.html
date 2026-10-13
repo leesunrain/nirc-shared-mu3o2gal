@@ -1,4 +1,102 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>진주마라톤 페이스 선정기</title><link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./style.css"></head><body><main class="wrap"><header><div class="eyebrow">NIRC RUNNING TOOL</div><h1>진주마라톤 페이스 선정기</h1><div class="version">배포 #002 · 고정 운영본</div><p>현재 능력자료를 선별해 풀 목표 페이스를 빠르게 설정합니다.</p></header>
-<section class="card"><div class="topline"><div><div class="label">선수 선택</div><div class="sub">현재는 전원 풀 기준 · 선수는 본인 기록만 수정 · 관리자는 전체 관리</div></div><input id="search" class="search" placeholder="이름 검색"></div><div id="athletes" class="athletes"></div></section>
-<section id="detail" class="results hidden"><div class="card edit-card"><div class="edit-title-row"><div><div class="caution-title">최근 기록 수정 · 자동 공유</div><div id="authLabel" class="auth-label">조회 모드</div></div><div class="auth-buttons"><button id="playerLogin" class="mini-btn">내 기록 수정</button><button id="adminLogin" class="mini-btn admin">관리자</button></div></div><div id="lockMsg" class="lock-msg">기록 수정은 비밀번호 인증 후 가능합니다.</div><div id="editorBody" class="editor-locked"><div class="edit-grid"><label>기준 기록 종류<select id="editSource"><option value="5K">5000m TT</option><option value="10K">실전 10K</option></select></label><label>최근 기록 (예: 20:00 또는 38:45)<input id="editTime" inputmode="numeric" placeholder="분:초"></label><label>날씨 보정 (초/km)<input id="editWeather" type="number" min="0" max="60" step="1" value="0"></label><label>메모<input id="editNote" placeholder="예: 조절주 제외, 정상 레이스"></label></div><div class="edit-actions"><button id="saveRecord" class="save-btn">기록 저장</button><button id="changePassword" class="outline-btn hidden">내 비밀번호 변경</button><span id="syncStatus" class="sync-status">입력 후 자동 저장됩니다.</span></div><div class="shared-note">선수 최초 비밀번호는 <b>0000</b>입니다. 인증 후 본인 기록만 수정할 수 있습니다. 관리자는 전체 선수 수정·추가·삭제가 가능합니다.<br><br>5000m를 선택하면 <b>날씨보정 5K × 2 + 1분30초</b>로 10K 능력을 자동 계산합니다. 10K를 선택하면 입력한 10K에 날씨보정을 적용합니다. 저장된 값은 서버에 공유되어 다른 사람의 앱에도 자동 반영됩니다.</div></div><div id="adminTools" class="admin-tools hidden"><button id="resetPassword" class="outline-btn">비밀번호 0000 초기화</button><button id="deleteAthlete" class="danger-btn">이 선수 삭제</button><button id="addAthlete" class="outline-btn">선수 추가</button></div></div><div class="bridge card"><div class="small" id="basis">기준 10K</div><strong id="name">-</strong><span id="ten">-</span></div><div class="result-grid"><article class="result-card"><div class="badge">① VDOT</div><h2 id="vdotTime">-</h2><p id="vdotPace">-</p><small id="vdotNum">-</small></article><article class="result-card"><div class="badge">② 나의 공식</div><h2 id="myTime">-</h2><p id="myPace">-</p><small>10K → HALF → FULL</small></article><article class="result-card avg"><div class="badge">③ 두 방식 평균 · 기준 풀</div><h2 id="avgTime">-</h2><p id="avgPace">-</p><small>VDOT + 나의 공식 단순 평균</small></article></div><div class="card pace-set"><div class="caution-title">풀 목표 페이스 빠른 설정</div><div class="pace-choices"><button class="pace-choice"><span>예상 그대로</span><b id="paceExact">-</b></button><button class="pace-choice"><span>+2초/km</span><b id="pacePlus2">-</b></button><button class="pace-choice"><span>+5초/km</span><b id="pacePlus5">-</b></button><button class="pace-choice"><span>+7초/km</span><b id="pacePlus7">-</b></button></div><div id="chosenTarget" class="chosen-target">-</div><div class="pace-set-help">버튼을 누르면 아래 전체 페이스표가 선택한 목표 페이스로 즉시 바뀝니다.</div></div><div class="card caution"><div class="caution-title">보수적 완주 목표</div><div class="caution-main">장거리 적응이 부족하면 <b>평균 예상 +5분</b></div><div id="safeTarget" class="safe-target">-</div><div class="caution-sub">실제 목표는 장거리 훈련 · 컨디션 · 당일 날씨에 따라 조정</div></div><details class="card pace-details" open><summary><span>풀코스 전체 페이스표</span><span class="open-hint">접기</span></summary><div class="pace-note">선택한 풀 목표를 기준으로 초반 억제 → 중반 유지 → 후반 운영 패턴을 적용합니다.</div><div id="paceTable" class="pace-table"></div></details><details class="card formula"><summary>산정 기준 보기</summary><div id="formulaText"></div></details></section>
-<section class="card footer-note"><b>현재 단계</b><br>현재는 전원 풀코스 기준입니다. 선수는 비밀번호 인증 후 본인 기록만 수정할 수 있고, 관리자는 전체 수정·추가·삭제가 가능합니다. 기록 저장 즉시 풀 예상기록과 페이스가 자동 재계산되고 서버에 공유됩니다. 김건욱·박주현·정혜영처럼 최근 10K가 조절주·동반주·컨디션 난조인 경우에는 5000m TT 기반 능력치를 우선합니다. 추후 참가 종목이 확정되면 10K · 하프 · 풀로 구분해 같은 명단에서 종목별 페이스표를 추가할 수 있습니다.</section></main><script src="./app.js"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>풀마라톤 예상 기록</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="eyebrow">NIRC RUNNING TOOL</div>
+    <h1>풀마라톤 예상 기록</h1>
+    <div class="version">v1.4</div>
+    <p>1000m · 5km · 10km 기록 하나로 풀마라톤 기록을 계산합니다.</p>
+  </header>
+
+  <section class="card input-card">
+    <div class="label">1. 성별</div>
+    <div class="seg" id="sexSeg">
+      <button class="active" data-sex="male">남자</button>
+      <button data-sex="female">여자</button>
+    </div>
+
+    <div class="label gap">2. 기준 기록</div>
+    <div class="seg three" id="distSeg">
+      <button class="active" data-dist="1000">1000m</button>
+      <button data-dist="5000">5km</button>
+      <button data-dist="10000">10km</button>
+    </div>
+
+    <div class="label gap">3. 기록 입력</div>
+    <div class="time-row">
+      <label><input id="hh" inputmode="numeric" maxlength="1" value="0"><span>시간</span></label>
+      <label><input id="mm" inputmode="numeric" maxlength="2" placeholder="03"><span>분</span></label>
+      <label><input id="ss" inputmode="numeric" maxlength="2" placeholder="30"><span>초</span></label>
+    </div>
+    <div class="label gap">4. LT1 · LT2 심박 입력 <span class="optional">(선택)</span></div>
+    <div class="lt-row">
+      <label><span>LT1</span><input id="lt1" inputmode="numeric" placeholder="예: 145"><em>bpm</em></label>
+      <label><span>LT2</span><input id="lt2" inputmode="numeric" placeholder="예: 165"><em>bpm</em></label>
+    </div>
+    <div class="lt-help">직접 측정한 LT1·LT2가 있으면 입력하세요. 미입력 시 페이스표만 표시됩니다.</div>
+    <button id="calc" class="calc">계산하기</button>
+    <div id="error" class="error"></div>
+  </section>
+
+  <section id="results" class="results hidden">
+    <div class="bridge card">
+      <div class="small">입력 기록 → 10km 환산</div>
+      <strong id="tenEq">--:--</strong>
+      <span id="tenPace">페이스 --:--/km</span>
+    </div>
+
+    <div class="result-grid">
+      <article class="result-card">
+        <div class="badge">① VDOT</div>
+        <h2 id="vdotTime">--:--:--</h2>
+        <p id="vdotPace">--:--/km</p>
+        <small id="vdotNum">VDOT --</small>
+      </article>
+      <article class="result-card">
+        <div class="badge">② 나의 공식</div>
+        <h2 id="myTime">--:--:--</h2>
+        <p id="myPace">--:--/km</p>
+        <small id="routeText">10K → HALF → FULL</small>
+      </article>
+      <article class="result-card avg">
+        <div class="badge">③ 두 방식 평균</div>
+        <h2 id="avgTime">--:--:--</h2>
+        <p id="avgPace">--:--/km</p>
+        <small>VDOT + 나의 공식 단순 평균</small>
+      </article>
+    </div>
+
+    <div class="card caution">
+      <div class="caution-title">초보 · 장거리 훈련 부족자</div>
+      <div class="caution-main">예상 기록보다 <b>약 +5분</b> 여유 있게</div>
+      <div id="safeTarget" class="safe-target">--:--:-- · --:--/km</div>
+      <div class="caution-sub">풀코스 +5분 ≈ km당 약 +7초</div>
+    </div>
+
+    <details class="card pace-details">
+      <summary>
+        <span>풀코스 전체 페이스표</span>
+        <span class="open-hint">눌러서 전체 보기</span>
+      </summary>
+      <div class="pace-note">페이스: 2026 동아마라톤 가감 패턴 적용 · 심박: 입력한 LT1~LT2 사이에서 초반 억제 → 중반 유지 → 후반 점진 상승. LT2는 목표가 아니라 상한선에 가깝게 관리합니다.</div>
+      <div id="paceTable" class="pace-table"></div>
+    </details>
+
+    <details class="card formula">
+      <summary>나의 공식 계산 구조 보기</summary>
+      <div id="formulaText"></div>
+    </details>
+  </section>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
