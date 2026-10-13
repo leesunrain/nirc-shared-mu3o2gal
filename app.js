@@ -1,133 +1,54 @@
-let sex='male', dist=1000;
-const $=id=>document.getElementById(id);
-document.querySelectorAll('#sexSeg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#sexSeg button').forEach(x=>x.classList.remove('active'));b.classList.add('active');sex=b.dataset.sex});
-document.querySelectorAll('#distSeg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#distSeg button').forEach(x=>x.classList.remove('active'));b.classList.add('active');dist=+b.dataset.dist;$('hh').value='0';$('mm').value='';$('ss').value='';});
+const SUPABASE_URL='https://qrhkrjtjhybtebsvsauu.supabase.co';
+const SUPABASE_KEY='sb_publishable_H3c56Is1UjvcC0iAHe_jxw_nx-_AsFR';
+let ATHLETES=[]; const $=id=>document.getElementById(id); let current=null, saveTimer=null; let authMode='view', authPassword='';
+function parseTime(s){let p=String(s||'').trim().split(':').map(Number);if(p.some(Number.isNaN))return NaN;return p.length===2?p[0]*60+p[1]:p.length===3?p[0]*3600+p[1]*60+p[2]:NaN}
 function fmt(sec){sec=Math.round(sec);let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
 function short(sec){sec=Math.round(sec);let m=Math.floor(sec/60),s=sec%60;return `${m}:${String(s).padStart(2,'0')}`}
 function pace(sec,dKm){return short(sec/dKm)}
-function vdotFor(distanceM, seconds){
-  const t=seconds/60, v=distanceM/t;
-  const vo2=-4.60+0.182258*v+0.000104*v*v;
-  const pct=0.8+0.1894393*Math.exp(-0.012778*t)+0.2989558*Math.exp(-0.1932605*t);
-  return vo2/pct;
-}
-function timeForVdot(distanceM, target){
-  let lo=30,hi=600;
-  for(let i=0;i<80;i++){let mid=(lo+hi)/2;let val=vdotFor(distanceM,mid*60); if(val>target) lo=mid; else hi=mid}
-  return ((lo+hi)/2)*60;
-}
-function tenFromInput(sec){
-  if(dist===1000) return (sec + (sex==='male'?40:30))*10;
-  if(dist===5000) return sec*2+90;
-  return sec;
-}
-function myFormula(ten){
-  let addHalf=ten<=2400?480:(ten<=3000?540:600);
-  let half=ten*2+addHalf;
-  let full=half*2+(sex==='female'?600:780);
-  return {half,full,addHalf};
-}
-
-function hrFractionForKm(km){
-  if(km<=5) return .35;
-  if(km<=10) return .40;
-  if(km<=20) return .475;
-  if(km<=30) return .525;
-  if(km<=35) return .60;
-  if(km<=40) return .70;
-  return .80;
-}
-function hrTarget(lt1,lt2,km){
-  if(!lt1 || !lt2 || lt2<=lt1) return null;
-  return Math.round(lt1+(lt2-lt1)*hrFractionForKm(km));
-}
-function racePaceTable(baseFull,lt1,lt2){
-  const base=baseFull/42.195;
-  let cum=0, rows=[];
+function vdotFor(distanceM,seconds){const t=seconds/60,v=distanceM/t;const vo2=-4.60+0.182258*v+0.000104*v*v;const pct=0.8+0.1894393*Math.exp(-0.012778*t)+0.2989558*Math.exp(-0.1932605*t);return vo2/pct}
+function timeForVdot(distanceM,target){let lo=30,hi=600;for(let i=0;i<80;i++){let mid=(lo+hi)/2,val=vdotFor(distanceM,mid*60);if(val>target)lo=mid;else hi=mid}return((lo+hi)/2)*60}
+function myFormula(ten,sex){let addHalf=ten<=2400?480:(ten<=3000?540:600);let half=ten*2+addHalf;let full=half*2+(sex==='female'?600:780);return{half,full,addHalf}}
+function calc(a){let ten=a.ten_seconds,vd=vdotFor(10000,ten),vdFull=timeForVdot(42195,vd),my=myFormula(ten,a.sex),avg=(vdFull+my.full)/2;return{ten,vd,vdFull,my,avg}}
+function sourceLabel(a){return a.source_type==='10K'?'실전10K':'5000TT'}
+function basisText(a){let b=sourceLabel(a); if(a.fivek_seconds&&a.source_type==='5K')b+=` ${short(a.fivek_seconds)}`; b+=` → 기준 10K ${short(a.ten_seconds)}`; if(a.weather_adjust_sec_per_km)b+=` · 날씨 -${a.weather_adjust_sec_per_km}초/km`; if(a.note)b+=` · ${a.note}`; return b}
+async function api(path,opt={}){const r=await fetch(SUPABASE_URL+'/rest/v1/'+path,{...opt,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',Prefer:opt.method==='PATCH'?'return=representation':'',...(opt.headers||{})}});if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json()}
+async function loadShared(silent=false){try{let rows=await api('jinju_marathon_pace_public?select=*&order=tenk_seconds.asc');ATHLETES=rows.map(r=>({...r,ten_seconds:r.tenk_seconds}));renderList($('search')?.value||'');if(current){let fresh=ATHLETES.find(a=>a.name===current.name);if(fresh){current=fresh;renderDetail(false)}}if(!silent)setStatus('공유 기록 최신 상태','ok')}catch(e){console.error(e);if(!silent)setStatus('서버 연결 실패 · 기존 화면 유지','err')}}
+function renderList(filter=''){let q=filter.trim();$('athletes').innerHTML=ATHLETES.filter(a=>!q||a.name.includes(q)).map(a=>{let c=calc(a);return `<button class="athlete ${current&&current.name===a.name?'selected':''}" data-name="${a.name}"><span class="ath-name">${a.name} <i class="src ${a.source_type==='10K'?'race':'tt'}">${sourceLabel(a)}</i></span><span class="ath-ten">기준 10K ${short(a.ten_seconds)}</span><b>${fmt(c.avg)}</b><em>${pace(c.avg,42.195)}/km</em></button>`}).join('');document.querySelectorAll('.athlete').forEach(b=>b.onclick=()=>select(b.dataset.name))}
+function racePaceTable(baseFull){
+  // Keep the original pacing shape, but center all adjustments so the finish
+  // equals the selected target to the second (including the final 195 m).
+  const distance=42.195, target=Math.round(baseFull), base=target/distance;
+  const adjustment=km=>km<=5?4:km<=10?2:km<=30?0:km<=41?1:-2;
+  const weightedOffset=Array.from({length:42},(_,i)=>adjustment(i+1)).reduce((a,b)=>a+b,0)-.195;
+  const correction=weightedOffset/distance;
+  let cum=0,rows=[];
   for(let km=1;km<=42;km++){
-    let adj=km<=5?4:km<=10?2:km<=30?0:km<=41?1:-2;
-    let sec=base+adj; cum+=sec;
-    rows.push({label:`${km}K`,km,sec,cum,hr:hrTarget(lt1,lt2,km),mark:km%5===0});
+    const sec=base+adjustment(km)-correction;
+    cum+=sec;
+    rows.push({label:`${km}K`,sec,cum,mark:km%5===0});
   }
-  let lastPace=base-1, lastSec=lastPace*0.195; cum+=lastSec;
-  rows.push({label:'FIN',km:42.195,sec:lastPace,cum,hr:hrTarget(lt1,lt2,42),finish:true});
+  const lastPace=base-1-correction;
+  cum=target; // prevent floating-point drift at the finish line
+  rows.push({label:'FIN',sec:lastPace,cum,finish:true});
   return rows;
 }
-function renderPaceTable(baseFull,lt1,lt2){
-  const rows=racePaceTable(baseFull,lt1,lt2);
-  let prev5Cum=0, groupHrs=[];
-  const hasHr=lt1 && lt2 && lt2>lt1;
-  let html=`<div class="pace-head" style="grid-template-columns:.55fr 1fr ${hasHr?'.85fr ':''}1.05fr">
-    <span>거리</span><span>목표 페이스</span>${hasHr?'<span>목표심박</span>':''}<span style="text-align:right">누적</span></div>`;
-  rows.forEach(r=>{
-    if(r.hr && !r.finish) groupHrs.push(r.hr);
-    let split='';
-    const kmNum=parseInt(r.label,10);
-    if(!r.finish && kmNum%5===0){
-      const lap5=r.cum-prev5Cum; prev5Cum=r.cum;
-      const avgP=lap5/5;
-      const avgHr=groupHrs.length?Math.round(groupHrs.reduce((a,b)=>a+b,0)/groupHrs.length):null;
-      groupHrs=[];
-      split=`<div class="five-split">
-        <span class="split-main">${kmNum-4}~${kmNum}K · 5K 랩</span>
-        <span class="split-time">${fmt(lap5)}</span>
-        <span class="split-sub">평균 ${pace(avgP,1)}/km${avgHr?` · 평균 목표심박 ${avgHr} bpm`:''}</span>
-      </div>`;
-    }
-    html+=`<div class="pace-block">
-      <div class="pace-row ${r.mark?'mark':''} ${r.finish?'finish':''}" style="grid-template-columns:.55fr 1fr ${hasHr?'.85fr ':''}1.05fr">
-        <span class="pace-km">${r.label}</span>
-        <span class="pace-big">${pace(r.sec,1)}/km</span>
-        ${hasHr?`<span class="hr-big">${r.hr} <small>bpm</small></span>`:''}
-        <span class="pace-cum">${fmt(r.cum)}</span>
-      </div>${split}
-    </div>`;
-  });
-  if(hasHr){
-    html+=`<div class="hr-guide"><b>심박 운영 가이드</b><br>
-    1~5K: LT1→LT2 간격의 35% · 6~10K: 40% · 11~20K: 약 48% · 21~30K: 약 53% · 31~35K: 60% · 36~40K: 70% · 마지막: 약 80%.<br>
-    후반 심박 상승은 자연스러운 드리프트를 고려하되, LT2를 억지로 목표로 삼지 않습니다. 날씨·컨디션·개인차에 따라 실제 심박은 달라질 수 있습니다.</div>`;
-  }
-  $('paceTable').innerHTML=html;
-}
-$('calc').onclick=()=>{
-  let h=+$('hh').value||0,m=+$('mm').value||0,s=+$('ss').value||0;
-  let input=h*3600+m*60+s;
-  let lt1=parseInt($('lt1').value,10)||0, lt2=parseInt($('lt2').value,10)||0;
-  $('error').textContent='';
-  if(!input || m>59 || s>59){$('error').textContent='올바른 기록을 입력해 주세요.';return}
-  if((lt1||lt2) && (!lt1 || !lt2 || lt1<80 || lt2>220 || lt2<=lt1)){$('error').textContent='LT1·LT2를 모두 입력하고 LT2가 LT1보다 높게 입력해 주세요.';return}
-  let plausible=(dist===1000?input<900:dist===5000?input<3600:input<7200);
-  if(!plausible){$('error').textContent='입력 기록과 선택한 거리를 다시 확인해 주세요.';return}
-  let ten=tenFromInput(input);
-  let my=myFormula(ten);
+function renderPaceTable(baseFull){let rows=racePaceTable(baseFull),prev5=0,html=`<div class="pace-head"><span>거리</span><span>목표 페이스</span><span style="text-align:right">누적</span></div>`;rows.forEach(r=>{let split='';let k=parseInt(r.label,10);if(!r.finish&&k%5===0){let lap=r.cum-prev5;prev5=r.cum;split=`<div class="five-split"><span class="split-main">${k-4}~${k}K · 5K 랩</span><span class="split-time">${fmt(lap)}</span><span class="split-sub">평균 ${pace(lap/5,1)}/km</span></div>`}html+=`<div class="pace-block"><div class="pace-row ${r.mark?'mark':''} ${r.finish?'finish':''}"><span class="pace-km">${r.label}</span><span class="pace-big">${pace(r.sec,1)}/km</span><span class="pace-cum">${fmt(r.cum)}</span></div>${split}</div>`});$('paceTable').innerHTML=html}
+function select(name){if(authMode==='player'&&current&&current.name!==name){authMode='view';authPassword=''} current=ATHLETES.find(a=>a.name===name);renderDetail(true);setEditorState();$('detail').classList.remove('hidden');renderList($('search').value);$('detail').scrollIntoView({behavior:'smooth',block:'start'})}
+function renderDetail(fillEditor=true){if(!current)return;let c=calc(current);$('name').textContent=current.name;$('basis').textContent=basisText(current);$('ten').textContent=`기준 10K ${short(current.ten_seconds)} · ${pace(c.ten,10)}/km`;$('vdotTime').textContent=fmt(c.vdFull);$('vdotPace').textContent=`${pace(c.vdFull,42.195)}/km`;$('vdotNum').textContent=`VDOT ${c.vd.toFixed(1)}`;$('myTime').textContent=fmt(c.my.full);$('myPace').textContent=`${pace(c.my.full,42.195)}/km`;$('avgTime').textContent=fmt(c.avg);$('avgPace').textContent=`${pace(c.avg,42.195)}/km`;$('safeTarget').textContent=`${fmt(c.avg+300)} · ${pace(c.avg+300,42.195)}/km`;$('paceExact').textContent=`${pace(c.avg,42.195)}/km`;$('pacePlus2').textContent=`${pace(c.avg+2*42.195,42.195)}/km`;$('pacePlus5').textContent=`${pace(c.avg+5*42.195,42.195)}/km`;$('pacePlus7').textContent=`${pace(c.avg+7*42.195,42.195)}/km`;document.querySelectorAll('.pace-choice').forEach((b,i)=>b.onclick=()=>{const adds=[0,2,5,7],target=c.avg+adds[i]*42.195;document.querySelectorAll('.pace-choice').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('chosenTarget').textContent=`목표 ${fmt(target)} · ${pace(target,42.195)}/km`;renderPaceTable(target)});document.querySelectorAll('.pace-choice').forEach(x=>x.classList.remove('active'));document.querySelector('.pace-choice').classList.add('active');$('chosenTarget').textContent=`목표 ${fmt(c.avg)} · ${pace(c.avg,42.195)}/km`;let band=c.my.addHalf===480?'40분 이내 → +8분':c.my.addHalf===540?'40분 초과~50분 → +9분':'50분 초과 → +10분';$('formulaText').innerHTML=`기준 10K <b>${short(current.ten_seconds)}</b>를 VDOT에 입력해 풀 등가 기록을 계산합니다.<br><br>나의 공식: 10K × 2 + 보정 (${band}) = 하프 <b>${fmt(c.my.half)}</b><br>하프 × 2 + ${current.sex==='female'?'10분(여자)':'13분(남자)'} = 풀 <b>${fmt(c.my.full)}</b><br><br>최종 기준 풀 = VDOT 풀과 나의 공식 풀의 <b>50:50 단순 평균</b>.`;renderPaceTable(c.avg);if(fillEditor){$('editSource').value=current.source_type;$('editTime').value=current.source_type==='5K'&&current.fivek_seconds?short(current.fivek_seconds):short(current.ten_seconds);$('editWeather').value=current.weather_adjust_sec_per_km||0;$('editNote').value=current.note||'';setStatus('입력 후 자동 저장됩니다.','')}}
+function setStatus(t,cls=''){$('syncStatus').textContent=t;$('syncStatus').className='sync-status '+cls}
+function computeTen(source,raw,weather){if(source==='5K'){let adjusted=Math.max(1,raw-weather*5);return adjusted*2+90}return Math.max(1,raw-weather*10)}
+async function rpc(fn,body){const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());let t=await r.text();return t?JSON.parse(t):null}
+function setEditorState(){let unlocked=authMode!=='view';$('editorBody').className=unlocked?'editor-unlocked':'editor-locked';$('lockMsg').classList.toggle('hidden',unlocked);$('adminTools').classList.toggle('hidden',authMode!=='admin');$('changePassword').classList.toggle('hidden',authMode!=='player');$('authLabel').textContent=authMode==='admin'?'관리자 모드 · 전체 수정 가능':authMode==='player'?`${current?.name||''} 본인 수정 모드`:'조회 모드'}
+async function loginPlayer(){if(!current)return;let pw=prompt(`${current.name} 선수 비밀번호를 입력하세요.\n최초 비밀번호: 0000`);if(pw===null)return;try{let source=current.source_type, raw=source==='5K'?(current.fivek_seconds||Math.max(1,(current.ten_seconds-90)/2)):current.ten_seconds;await rpc('jinju_player_update',{p_name:current.name,p_password:pw,p_source_type:source,p_fivek_seconds:source==='5K'?Math.round(raw):null,p_tenk_seconds:current.ten_seconds,p_weather:current.weather_adjust_sec_per_km||0,p_note:current.note||''});authMode='player';authPassword=pw;setEditorState();setStatus(`${current.name} 본인 인증 완료`,'ok')}catch(e){setStatus('비밀번호가 맞지 않습니다.','err')}}
+async function loginAdmin(){let pw=prompt('관리자 비밀번호를 입력하세요.');if(pw===null)return;try{let ok=await rpc('jinju_admin_verify',{p_password:pw});if(!ok)throw new Error();authMode='admin';authPassword=pw;setEditorState();setStatus('관리자 인증 완료 · 전체 수정 가능','ok')}catch(e){setStatus('관리자 비밀번호가 맞지 않습니다.','err')}}
+async function saveCurrent(){if(!current)return;if(authMode==='view'){setStatus('먼저 비밀번호 인증을 해주세요.','err');return}let source=$('editSource').value,raw=parseTime($('editTime').value),weather=Math.max(0,Number($('editWeather').value)||0),note=$('editNote').value.trim();if(!Number.isFinite(raw)||raw<600){setStatus('기록 형식을 확인하세요. 예: 20:00','err');return}let ten=computeTen(source,raw,weather);setStatus('저장 중…','');try{let body={source_type:source,fivek_seconds:source==='5K'?Math.round(raw):null,tenk_seconds:Math.round(ten),weather_adjust_sec_per_km:Math.round(weather),note};let r;if(authMode==='admin'){r=await rpc('jinju_admin_upsert',{p_admin_password:authPassword,p_name:current.name,p_sex:current.sex,p_source_type:source,p_fivek_seconds:body.fivek_seconds,p_tenk_seconds:body.tenk_seconds,p_weather:body.weather_adjust_sec_per_km,p_note:note})}else{r=await rpc('jinju_player_update',{p_name:current.name,p_password:authPassword,p_source_type:source,p_fivek_seconds:body.fivek_seconds,p_tenk_seconds:body.tenk_seconds,p_weather:body.weather_adjust_sec_per_km,p_note:note})}current={...r,ten_seconds:r.tenk_seconds};let idx=ATHLETES.findIndex(a=>a.name===current.name);if(idx>=0)ATHLETES[idx]=current;renderDetail(false);setEditorState();renderList($('search').value);setStatus(`저장 완료 · 기준 10K ${short(current.ten_seconds)} · 모두에게 공유됨`,'ok')}catch(e){console.error(e);setStatus('저장 실패 · 인증 또는 인터넷 연결을 확인하세요.','err')}}
+function scheduleSave(){if(authMode==='view')return;clearTimeout(saveTimer);saveTimer=setTimeout(saveCurrent,900);setStatus('변경 감지 · 자동 저장 대기…','')}
 
-  // VDOT은 사용자가 실제로 입력한 거리/기록 자체에서 계산
-  let vd=vdotFor(dist,input);
-  let vdFull=timeForVdot(42195,vd);
-  let avg=(vdFull+my.full)/2;
+async function changeMyPassword(){if(authMode!=='player'||!current)return;let np=prompt('새 비밀번호를 입력하세요.\n4자리 이상으로 설정해 주세요.');if(np===null)return;np=np.trim();if(np.length<4){alert('비밀번호는 4자리 이상으로 설정해 주세요.');return}let confirmPw=prompt('새 비밀번호를 한 번 더 입력하세요.');if(confirmPw===null)return;if(np!==confirmPw.trim()){alert('새 비밀번호가 서로 다릅니다.');return}try{await rpc('jinju_player_change_password',{p_name:current.name,p_old_password:authPassword,p_new_password:np});authPassword=np;setStatus('비밀번호 변경 완료 · 다음 로그인부터 새 비밀번호를 사용하세요.','ok');alert('비밀번호가 변경되었습니다.')}catch(e){console.error(e);alert('비밀번호 변경 실패 · 현재 비밀번호를 다시 확인해 주세요.')}}
+async function resetPlayerPassword(){if(authMode!=='admin'||!current)return;if(!confirm(`${current.name} 선수의 비밀번호를 0000으로 초기화할까요?`))return;try{await rpc('jinju_admin_reset_player_password',{p_admin_password:authPassword,p_name:current.name});setStatus(`${current.name} 비밀번호를 0000으로 초기화했습니다.`,'ok');alert(`${current.name} 선수의 비밀번호가 0000으로 초기화되었습니다.`)}catch(e){console.error(e);alert('비밀번호 초기화 실패')}}
 
-  $('tenEq').textContent=fmt(ten);
-  $('tenPace').textContent=`페이스 ${pace(ten,10)}/km`;
-  $('vdotTime').textContent=fmt(vdFull);
-  $('vdotPace').textContent=`${pace(vdFull,42.195)}/km`;
-  $('vdotNum').textContent=`VDOT ${vd.toFixed(1)}`;
-  $('myTime').textContent=fmt(my.full);
-  $('myPace').textContent=`${pace(my.full,42.195)}/km`;
-  $('avgTime').textContent=fmt(avg);
-  $('avgPace').textContent=`${pace(avg,42.195)}/km`;
-  let safe=avg+300;
-  $('safeTarget').textContent=`${fmt(safe)} · ${pace(safe,42.195)}/km`;
-  renderPaceTable(avg,lt1,lt2);
-
-  let first = dist===1000
-    ? `1000m → 10km: 1000m 페이스 + ${sex==='male'?'40':'30'}초/km = 10km ${fmt(ten)}`
-    : dist===5000
-    ? `5km → 10km: 5km × 2 + 1분 30초 = 10km ${fmt(ten)}`
-    : `입력 10km 기록 = ${fmt(ten)}`;
-  let band=my.addHalf===480?'40분 이내 → +8분':my.addHalf===540?'40분 초과~50분 → +9분':'50분 초과 → +10분';
-  $('formulaText').innerHTML=`${first}<br>10km → 하프: 10km × 2 + 보정 (${band}) = <b>${fmt(my.half)}</b><br>하프 → 풀: 하프 × 2 + ${sex==='female'?'10분(여자)':'13분(남자)'} = <b>${fmt(my.full)}</b>`;
-  $('results').classList.remove('hidden');
-  $('results').scrollIntoView({behavior:'smooth',block:'start'});
-};
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
+async function deleteAthlete(){if(authMode!=='admin'||!current)return;if(!confirm(`${current.name} 선수를 정말 삭제할까요?`))return;try{await rpc('jinju_admin_delete',{p_admin_password:authPassword,p_name:current.name});let n=current.name;current=null;$('detail').classList.add('hidden');await loadShared(true);alert(`${n} 삭제 완료`)}catch(e){alert('삭제 실패')}}
+async function addAthlete(){if(authMode!=='admin')return;let name=prompt('추가할 선수 이름');if(!name)return;let sex=(prompt('성별: 남자는 M, 여자는 F','M')||'M').toUpperCase()==='F'?'female':'male';let t=prompt('기준 5000m 기록 (예: 20:00)','20:00');let raw=parseTime(t);if(!Number.isFinite(raw))return alert('기록 형식 오류');let ten=raw*2+90;try{let r=await rpc('jinju_admin_upsert',{p_admin_password:authPassword,p_name:name.trim(),p_sex:sex,p_source_type:'5K',p_fivek_seconds:Math.round(raw),p_tenk_seconds:Math.round(ten),p_weather:0,p_note:''});await loadShared(true);select(r.name);setEditorState();alert('선수 추가 완료 · 최초 비밀번호는 0000입니다.')}catch(e){alert('추가 실패')}}
+$('search').addEventListener('input',e=>renderList(e.target.value));$('saveRecord').onclick=saveCurrent;$('playerLogin').onclick=loginPlayer;$('adminLogin').onclick=loginAdmin;$('deleteAthlete').onclick=deleteAthlete;$('addAthlete').onclick=addAthlete;$('changePassword').onclick=changeMyPassword;$('resetPassword').onclick=resetPlayerPassword;['editSource','editTime','editWeather','editNote'].forEach(id=>$(id).addEventListener('change',scheduleSave));$('editTime').addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(saveCurrent,1200)});$('editWeather').addEventListener('input',scheduleSave);$('editNote').addEventListener('input',scheduleSave);
+loadShared();setInterval(()=>loadShared(true),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadShared(true)});
+if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').then(r=>r.update()).catch(()=>{}))}

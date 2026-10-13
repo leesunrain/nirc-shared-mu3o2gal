@@ -1,6 +1,6 @@
 {
-  "name": "풀마라톤 예상 기록",
-  "short_name": "풀 예상기록",
+  "name": "진주마라톤 페이스 선정기",
+  "short_name": "진주 페이스",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
