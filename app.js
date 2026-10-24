@@ -19,6 +19,14 @@ function timeForVdot(distanceM, target){
 function tenFromInput(sec){
   if(dist===1000) return (sec + (sex==='male'?40:30))*10;
   if(dist===5000) return sec*2+90;
+  if(dist===21097.5){
+    // Invert the user's 10K→half rule, using the consistent time bracket.
+    for(const [add,lo,hi] of [[480,0,2400],[540,2400,3000],[600,3000,Infinity]]){
+      const ten=(sec-add)/2;
+      if(ten>lo && ten<=hi || (lo===0 && ten>=0 && ten<=hi)) return ten;
+    }
+    return (sec-540)/2;
+  }
   return sec;
 }
 function myFormula(ten){
@@ -102,10 +110,10 @@ $('calc').onclick=()=>{
   $('error').textContent='';
   if(!input || m>59 || s>59){$('error').textContent='올바른 기록을 입력해 주세요.';return}
   if((lt1||lt2) && (!lt1 || !lt2 || lt1<80 || lt2>220 || lt2<=lt1)){$('error').textContent='LT1·LT2를 모두 입력하고 LT2가 LT1보다 높게 입력해 주세요.';return}
-  let plausible=(dist===1000?input<900:dist===5000?input<3600:input<7200);
+  let plausible=(dist===1000?input<900:dist===5000?input<3600:dist===10000?input<7200:input<14400);
   if(!plausible){$('error').textContent='입력 기록과 선택한 거리를 다시 확인해 주세요.';return}
   let ten=tenFromInput(input);
-  let my=myFormula(ten);
+  let my=dist===21097.5 ? {half:input,full:input*2+(sex==='female'?600:780),addHalf:null} : myFormula(ten);
 
   // VDOT은 사용자가 실제로 입력한 거리/기록 자체에서 계산
   let vd=vdotFor(dist,input);
@@ -129,10 +137,13 @@ $('calc').onclick=()=>{
     ? `1000m → 10km: 1000m 페이스 + ${sex==='male'?'40':'30'}초/km = 10km ${fmt(ten)}`
     : dist===5000
     ? `5km → 10km: 5km × 2 + 1분 30초 = 10km ${fmt(ten)}`
+    : dist===21097.5 ? `입력 하프 기록 = ${fmt(input)} (10km 환산값은 참고용)`
     : `입력 10km 기록 = ${fmt(ten)}`;
   let band=my.addHalf===480?'40분 이내 → +8분':my.addHalf===540?'40분 초과~50분 → +9분':'50분 초과 → +10분';
-  $('formulaText').innerHTML=`${first}<br>10km → 하프: 10km × 2 + 보정 (${band}) = <b>${fmt(my.half)}</b><br>하프 → 풀: 하프 × 2 + ${sex==='female'?'10분(여자)':'13분(남자)'} = <b>${fmt(my.full)}</b>`;
+  $('formulaText').innerHTML=dist===21097.5
+    ? `${first}<br>하프 → 풀: 입력 하프 × 2 + ${sex==='female'?'10분(여자)':'13분(남자)'} = <b>${fmt(my.full)}</b>`
+    : `${first}<br>10km → 하프: 10km × 2 + 보정 (${band}) = <b>${fmt(my.half)}</b><br>하프 → 풀: 하프 × 2 + ${sex==='female'?'10분(여자)':'13분(남자)'} = <b>${fmt(my.full)}</b>`;
   $('results').classList.remove('hidden');
   $('results').scrollIntoView({behavior:'smooth',block:'start'});
 };
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=1.4', {updateViaCache:'none'}).catch(()=>{}));}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=1.5', {updateViaCache:'none'}).catch(()=>{}));}
