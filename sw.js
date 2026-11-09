@@ -1,4 +1,4 @@
-const CACHE='marathon-predictor-shell-v1.8';
+const CACHE='marathon-predictor-shell-v1.9';
 const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   self.skipWaiting();

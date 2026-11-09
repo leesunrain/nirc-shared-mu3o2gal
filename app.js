@@ -59,25 +59,26 @@ function hrTarget(lt1,lt2,km){
   if(!lt1 || !lt2 || lt2<=lt1) return null;
   return Math.round(lt1+(lt2-lt1)*hrFractionForKm(km));
 }
-function racePaceTable(baseFull,lt1,lt2,mode='basic'){
-  // 기본: 첫 5km +3초/km, 이후 목표 평균 페이스. 15~20km는 컨디션에 따른 자율 회복 구간.
-  // 참고: 첫 5km +3초/km, 나머지 37.195km에 15초를 균등 분산해 정확히 목표시간 도달.
+function racePaceTable(baseFull,lt1,lt2,mode='plan1'){
+  // 1안: 0~5km +3초/km, 15~25km -1.5초/km.
+  // 2안: 0~5km +3초/km, 15~30km -1초/km.
+  // 두 방식 모두 초반 +15초와 중반 -15초가 상쇄된다.
   const target=Math.round(baseFull);
   const avg=target/42.195;
-  const recovery=mode==='target' ? -15/37.195 : 0;
   let cum=0,rows=[];
   for(let km=1;km<=42;km++){
-    const sec=avg+(km<=5?3:recovery);
+    const startKm=km-1;
+    const offset=startKm<5 ? 3 : (startKm>=15 && startKm<(mode==='plan2'?30:25) ? (mode==='plan2'?-1:-1.5) : 0);
+    const sec=avg+offset;
     cum+=sec;
     rows.push({label:`${km}K`,km,sec,cum,hr:hrTarget(lt1,lt2,km),mark:km%5===0});
   }
-  const lastPace=avg+recovery;
+  const lastPace=avg;
   cum+=lastPace*0.195;
-  if(mode==='target') cum=target;
   rows.push({label:'FIN',km:42.195,sec:lastPace,cum,hr:hrTarget(lt1,lt2,42),finish:true});
   return rows;
 }
-let paceMode='basic';
+let paceMode='plan1';
 function setPaceMode(mode){
   paceMode=mode;
   document.querySelectorAll('[data-pace-mode]').forEach(b=>{
@@ -92,8 +93,7 @@ document.querySelectorAll('[data-pace-mode]').forEach(b=>b.addEventListener('cli
 function renderPaceTable(baseFull,lt1,lt2){
   const rows=racePaceTable(baseFull,lt1,lt2,paceMode);
   $('paceTable').dataset.target=String(baseFull);
-  const isTarget=paceMode==='target';
-  $('paceModeResult').textContent=isTarget ? `목표시간 맞춤 · 최종 ${fmt(Math.round(baseFull))} (초반 +15초를 이후 구간에 분산)` : `기본 운영 · 최종 ${fmt(Math.round(baseFull)+15)} (예상기록 대비 +15초)`;
+  $('paceModeResult').textContent=paceMode==='plan2' ? `2안 · 15~30km에서 −1초/km로 15초 회복 · 최종 ${fmt(Math.round(baseFull))}` : `1안 · 15~25km에서 −1.5초/km로 15초 회복 · 최종 ${fmt(Math.round(baseFull))}`;
   let prev5Cum=0, groupHrs=[];
   const hasHr=lt1 && lt2 && lt2>lt1;
   let html=`<div class="pace-head" style="grid-template-columns:.55fr 1fr ${hasHr?'.85fr ':''}1.05fr">
